@@ -13,11 +13,16 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import mean_absolute_error
 from sklearn.metrics import mean_squared_error
+from sklearn.model_selection import RandomizedSearchCV
+from datetime import datetime
+import pickle as pkl
 
+#%%
 # Control panel
 scoreNormalized = False
 featureNormalized = True
 
+#%% Preprocessing
 # Load data
 X_t = pd.read_csv("data/X_t.csv")
 X_tr = pd.read_csv("data/X_tr.csv")
@@ -63,9 +68,57 @@ if featureNormalized == True:
 # Convert column into 1D array (for training labels)
 y_tr = np.array(y_tr).ravel()
 
-RFModel = RandomForestRegressor(n_estimators = 100, random_state = 42)
-RFModel.fit(X_tr, np.array(y_tr))
 
-prediction = RFModel.predict(X_t)
+#%% Grid search
+# Prepare grid hyperparameters
 
-mean_squared_error(y_t, prediction)
+# Number of trees in random forest
+n_estimators = [int(x) for x in np.linspace(start = 100, stop = 1000, num = 10)]
+# Number of features to consider at every split
+max_features = ['auto', 'sqrt']
+# Maximum number of levels in tree
+max_depth = [int(x) for x in np.linspace(10, 110, num = 11)]
+max_depth.append(None)
+# Minimum number of samples required to split a node
+min_samples_split = [5, 10, 20, 50]
+# Minimum number of samples required at each leaf node
+min_samples_leaf = [2, 4, 10]
+# Method of selecting samples for training each tree
+bootstrap = [True, False]
+
+# Create the random grid
+random_grid = {'n_estimators': n_estimators,
+               'max_features': max_features,
+               'max_depth': max_depth,
+               'min_samples_split': min_samples_split,
+               'min_samples_leaf': min_samples_leaf,
+               'bootstrap': bootstrap}
+
+#%% Excecuting grid search
+# Base model for tuning
+RFBase = RandomForestRegressor()
+
+# Random search of parameters, using 3 fold cross validation, 
+# search across 100 different combinations, and use all available cores
+RFGridModel = RandomizedSearchCV(estimator = RFBase, param_distributions = random_grid, n_iter = 100, cv = 3, verbose=2, random_state=42, n_jobs = -1)
+
+# Execute grid search
+RFGridModel.fit(X_tr, y_tr)
+
+#%% Post-model analysis
+# Check for best params
+RFGridModel.best_params_
+
+# Prediction and check error
+prediction = RFGridModel.predict(X_t)
+RSME = mean_squared_error(y_t, prediction).round(2)
+print(RSME)
+
+#%% Save model
+# Get timestamp
+now = datetime.now().strftime("%d-%m-%Y_%Hh%Mm")
+
+# Write to pickle
+with open(f"models/RF_{now}_BestRMSE_{RSME}.pickle", "wb") as f:
+    pkl.dump(RFGridModel, f)  
+
