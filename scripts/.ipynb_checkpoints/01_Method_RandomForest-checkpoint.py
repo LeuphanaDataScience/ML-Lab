@@ -93,7 +93,6 @@ RFR2 = cross_val_score(RFBase, X_tr, y_tr, scoring=('r2'))
 
 np.mean(RFR2)
 np.std(RFR2)
-
 #%% Excecuting grid search
 # Base model for tuning
 RFBase = RandomForestRegressor()
