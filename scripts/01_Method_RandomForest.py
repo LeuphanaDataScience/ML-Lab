@@ -251,6 +251,8 @@ CBLossImp = CatBoostBest.get_feature_importance(Pool(X_tr, label = y_tr), type =
 
 PlotImp(CBLossImp, "CB", "Loss")
 
+
+#%% SHAP PLOT
 CBShapImp = CatBoostBest.get_feature_importance(Pool(X_tr, label = y_tr), type = "ShapValues")
 
 expected_value = CBShapImp[0,-1]
